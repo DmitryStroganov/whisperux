@@ -1,0 +1,63 @@
+# Podman Play Kube Manifest for Whisper Transcriber
+# Use: podman play kube podman-play.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: whisper-pod
+  labels:
+    app: whisper-transcriber
+spec:
+  containers:
+    - name: whisper-server
+      image: docker.io/hwdsl2/whisper-server
+      ports:
+        - containerPort: 9000
+          hostPort: 8005
+          protocol: TCP
+      env:
+        - name: WHISPER_MODEL
+          value: "tiny.en"
+        - name: WHISPER_API_KEY
+          value: ""
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+        limits:
+          memory: "1Gi"
+          cpu: "2000m"
+    - name: whisper-ux
+      image: whisper-ux:latest
+      ports:
+        - containerPort: 80
+          hostPort: 8080
+          protocol: TCP
+      env:
+        - name: WHISPER_API_URL
+          value: "http://localhost:8005"
+        - name: HEALTH_CHECK_INTERVAL
+          value: "20000"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "1000m"
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 80
+        initialDelaySeconds: 10
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3

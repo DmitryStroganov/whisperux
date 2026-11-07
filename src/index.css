@@ -1,0 +1,32 @@
+/* Minimal fallback for browsers that don't support LESS compilation.
+   All production styling is handled by .less files compiled at build time. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #111827;
+  color: #f3f4f6;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Ensure full background coverage */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-color: #111827;
+  pointer-events: none;
+  z-index: -1;
+}

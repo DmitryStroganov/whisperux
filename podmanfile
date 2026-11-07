@@ -1,0 +1,57 @@
+# Multi-stage build for production deployment
+# Frontend: React TypeScript app with Vite
+# Backend: FastAPI (external, separate container)
+# Proxy: Nginx to route API requests to backend
+
+# ============================================
+# Stage 1: Build Frontend
+# ============================================
+FROM docker.io/node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source files
+COPY . .
+
+# Build the production bundle
+RUN npm run build
+
+# ============================================
+# Stage 2: Production with Nginx Proxy
+# ============================================
+FROM docker.io/nginx:alpine
+
+WORKDIR /app
+
+# Copy built frontend files
+COPY --from=builder /app/build ./build
+
+# Copy nginx configuration - only server block to conf.d
+COPY etc/nginx/server.conf /etc/nginx/conf.d/default.conf
+
+# Copy environment file (for development only)
+# Note: Environment variables are passed at runtime via docker run
+# The .env file is only needed for development
+COPY .env /app/.env
+
+# Create non-root user for security (but run as root for port 80)
+RUN addgroup -g 1001 -S nginx-group && \
+    adduser -S nginx-user -u 1001 -G nginx-group
+
+# Set ownership (only for directories that exist)
+RUN mkdir -p /var/cache/nginx /var/log/nginx /var/lib/nginx && \
+    chown -R nginx-user:nginx-group /app /var/cache/nginx /var/log/nginx /var/lib/nginx
+
+# Expose port 80
+EXPOSE 80
+
+# Health check - verifies nginx is responding
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,44 @@
+# Podman Compose for Whisper Transcriber
+# Manages whisper-ux (nginx + frontend) and whisper-server containers
+
+version: '3.8'
+
+services:
+  whisper-server:
+    image: docker.io/hwdsl2/whisper-server
+    container_name: whisper-server
+    restart: unless-stopped
+    ports:
+      - "8005:9000"
+    environment:
+      - WHISPER_MODEL=tiny.en
+      - WHISPER_API_KEY=
+    networks:
+      - whisper-network
+
+  whisper-ux:
+    build:
+      context: ..
+      dockerfile: podmanfile
+    container_name: whisper-ux
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - WHISPER_API_URL=http://localhost:8005
+      - HEALTH_CHECK_INTERVAL=20000
+    depends_on:
+      - whisper-server
+    networks:
+      - whisper-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  whisper-network:
+    name: whisper-network
+    driver: bridge
